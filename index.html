@@ -39,13 +39,15 @@
       border-radius: 6px;
       border: 1px solid #0f172a;
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      overflow: hidden;
     }
     .print-left { flex: 1 1 auto; display:flex; flex-direction:column; gap:4px; min-width:0; }
-    .print-title { font-weight:700; font-size:12px; line-height:1; color:#0b1220; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .print-title { font-weight:700; font-size:12px; line-height:1.2; color:#0b1220; white-space:normal; word-break:break-word; }
     .print-sub { font-size:9px; color:#1f2937; }
-    .print-specs { margin-top:4px; font-size:9px; color:#111827; display:flex; gap:6px; flex-wrap:wrap; }
+    .print-specs { margin-top:4px; font-size:9px; color:#111827; display:flex; flex-direction:column; gap:2px; }
     .print-footer { margin-top:auto; font-size:8px; color:#374151; }
-    .print-qr { width:44mm; height:44mm; display:flex; align-items:center; justify-content:center; background:white; border-radius:4px; flex:0 0 44mm; }
+    .print-qr { width:38mm; height:38mm; display:flex; align-items:center; justify-content:center; background:white; border-radius:4px; flex:0 0 38mm; overflow:hidden; }
+    .print-qr img, .print-qr canvas { max-width:100% !important; max-height:100% !important; object-fit:contain; }
 
     /* Small modal inner sizing */
     #qrModal .modal-inner { max-width: 420px; }
@@ -163,10 +165,9 @@
   <div id="qrModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="qrTitle">
     <div class="modal-inner bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl relative">
       <button id="qrCloseBtn" class="absolute top-3 right-3 text-slate-400 hover:text-white p-2" type="button" aria-label="Close QR dialog">✕</button>
-      <h3 id="qrTitle" class="text-lg font-bold text-white mb-1">Windscreen Display QR</h3>
-      <p class="text-xs text-slate-400 mb-4">Scan to view this vehicle profile on any mobile device. Use the Print button to produce a small windscreen label.</p>
+      <h3 id="qrTitle" class="text-lg font-bold text-white mb-4">Windscreen Display QR</h3>
 
-      <div id="printPreview" class="mx-auto bg-white rounded-lg p-3 inline-block shadow-inner mb-4" style="width:320px;">
+      <div id="printPreview" class="mx-auto bg-white rounded-lg p-2 inline-block shadow-inner mb-4 overflow-hidden" style="max-width:100%;">
         <div id="printCard" class="print-card" role="document" aria-label="Printable vehicle display">
           <div class="print-left">
             <div id="pc-title" class="print-title">Vehicle Title</div>
@@ -296,8 +297,8 @@
         try {
           new QRCode(container, {
             text: url,
-            width: size || 180,
-            height: size || 180,
+            width: size || 130,
+            height: size || 130,
             colorDark: "#0f172a",
             colorLight: "#ffffff",
             correctLevel: QRCode.CorrectLevel ? QRCode.CorrectLevel.H : undefined
@@ -361,21 +362,28 @@
       }
 
       // ---------- QR Modal + printable card ----------
+      function populatePrintCard(data) {
+        document.getElementById('pc-title').textContent = data.title || 'Classic Vehicle';
+        document.getElementById('pc-sub').textContent = `${data.year || ''} ${data.entryNumber ? '• Entry #' + data.entryNumber : ''}`;
+        document.getElementById('pc-engine').textContent = `Engine: ${data.specs?.engine || '--'}`;
+        document.getElementById('pc-colour').textContent = `Colour: ${data.specs?.colour || '--'}`;
+        document.getElementById('pc-footer').textContent = data.owner ? `Owner: ${data.owner}` : '';
+      }
+
       function openQRModal() {
         const modal = document.getElementById('qrModal');
         lastFocusedElement = document.activeElement;
 
-        // Populate printable preview from carData (if available), otherwise fallback to DOM text
         populatePrintCard(carData || {
           title: document.getElementById('displayTitle')?.textContent || '',
           year: document.getElementById('displayYear')?.textContent || '',
-          entryNumber: (document.getElementById('displaySubtitle')?.textContent || '').replace('Classic Show Entry #','') || '',
-          specs: {
-            engine: document.getElementById('displayEngine')?.textContent || '',
-            colour: document.getElementById('displayColour')?.textContent || ''
-          },
-          owner: ''
+          entryNumber: (document.getElementById('displaySubtitle')?.textContent || '').replace('Classic Show Entry #','')
         });
+
+        const qrUrl = window.location.href;
+        document.getElementById('qrUrlText').textContent = qrUrl;
+
+        makeQRCode(document.getElementById('printQrContainer'), qrUrl, 130);
 
         modal.classList.remove('hidden');
         modal.setAttribute('aria-hidden', 'false');
@@ -394,255 +402,26 @@
 
         if (typeof activeFocusTrap === 'function') { activeFocusTrap(); activeFocusTrap = null; }
         if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') lastFocusedElement.focus();
-
-        // clear QR containers
-        document.getElementById('qrcode')?.innerHTML && (document.getElementById('qrcode').innerHTML = '');
-        document.getElementById('printQrContainer')?.innerHTML && (document.getElementById('printQrContainer').innerHTML = '');
-        document.getElementById('qrUrlText').textContent = '';
       }
 
-      function populatePrintCard(data) {
-        data = data || {};
-        carData = data;
-        const title = data.title || 'Untitled Classic';
-        const year = data.year || 'N/A';
-        const entry = data.entryNumber ? `Entry #${data.entryNumber}` : '';
-        const engine = data.specs && data.specs.engine ? data.specs.engine : '--';
-        const colour = data.specs && data.specs.colour ? data.specs.colour : '--';
-        const owner = data.owner || '';
-
-        document.getElementById('pc-title').textContent = title;
-        document.getElementById('pc-sub').textContent = `${year}${entry ? ' • ' + entry : ''}`;
-        document.getElementById('pc-engine').textContent = `Engine: ${engine}`;
-        document.getElementById('pc-colour').textContent = `Colour: ${colour}`;
-        document.getElementById('pc-footer').textContent = owner ? `Owner: ${owner}` : '';
-
-        const url = window.location.href;
-        // generate small QR for the modal preview (also used for print)
-        // a visible QR (non-print) to aid scanning on-screen
-        const qrUrlTextEl = document.getElementById('qrUrlText');
-        qrUrlTextEl.textContent = url;
-
-        // generate two QRs: one small (qrcode) and one sized to the print area (printQrContainer)
-        const qrcodeEl = document.getElementById('qrcode');
-        if (qrcodeEl) makeQRCode(qrcodeEl, url, 160);
-
-        const printQrEl = document.getElementById('printQrContainer');
-        if (printQrEl) {
-          // size in px approximated from our print-qr mm size; we use clientWidth to fit.
-          const size = Math.min(printQrEl.clientWidth, printQrEl.clientHeight) || 180;
-          makeQRCode(printQrEl, url, size);
-        }
-      }
-
-      function printCard() {
-        // printing will use the @media print rules to show only the #printCard
-        window.print();
-      }
-
-      // ---------- Guestbook ----------
-      function getCarKey() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const carFile = urlParams.get('car') || 'car';
-        return `guestbook_${carFile}`;
-      }
-
-      function safeParseJSON(jsonStr, fallback) {
-        try { return JSON.parse(jsonStr); } catch (e) { return fallback; }
-      }
-
-      function formatCommentDate(d = new Date()) {
-        return d.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-      }
-
-      function loadGuestbook() {
-        const storageKey = getCarKey();
-        let savedComments = [];
-        try {
-          savedComments = safeParseJSON(localStorage.getItem(storageKey) || '[]', []);
-          if (!Array.isArray(savedComments)) savedComments = [];
-        } catch (err) {
-          console.error('Guestbook load error', err);
-          showStatusAlert('Unable to read saved comments from local storage. Comments will not persist in this browser.', 'error');
-          savedComments = [];
-        }
-
-        const countEl = document.getElementById('commentCount');
-        const feedEl = document.getElementById('commentsFeed');
-
-        if (countEl) countEl.textContent = `${savedComments.length} Comment${savedComments.length === 1 ? '' : 's'}`;
-        if (!feedEl) return;
-        feedEl.innerHTML = '';
-
-        if (savedComments.length === 0) {
-          const p = document.createElement('p');
-          p.className = 'text-slate-500 text-xs italic text-center py-4';
-          p.textContent = 'No comments left yet. Be the first to leave a note!';
-          feedEl.appendChild(p);
-          return;
-        }
-
-        savedComments.forEach(c => {
-          const wrapper = document.createElement('div');
-          wrapper.className = 'bg-slate-900/80 border border-slate-700/60 rounded-lg p-3 space-y-1';
-
-          const header = document.createElement('div');
-          header.className = 'flex justify-between items-start';
-
-          const left = document.createElement('div');
-          const nameSpan = document.createElement('span');
-          nameSpan.className = 'text-amber-400 text-xs font-semibold';
-          nameSpan.textContent = c.name || 'Anonymous';
-          left.appendChild(nameSpan);
-
-          if (c.location) {
-            const locSpan = document.createElement('span');
-            locSpan.className = 'text-slate-500 text-[11px] ml-1.5';
-            locSpan.textContent = `• ${c.location}`;
-            left.appendChild(locSpan);
-          }
-
-          const dateSpan = document.createElement('span');
-          dateSpan.className = 'text-slate-500 text-[10px] font-mono';
-          dateSpan.textContent = c.date || '';
-
-          header.appendChild(left);
-          header.appendChild(dateSpan);
-
-          const messageP = document.createElement('p');
-          messageP.className = 'text-slate-300 text-xs leading-relaxed';
-          messageP.textContent = c.message || '';
-
-          wrapper.appendChild(header);
-          wrapper.appendChild(messageP);
-
-          feedEl.appendChild(wrapper);
-        });
-      }
-
-      function handleCommentSubmit(event) {
-        event.preventDefault();
-
-        const nameInput = document.getElementById('guestName');
-        const locationInput = document.getElementById('guestLocation');
-        const messageInput = document.getElementById('guestMessage');
-        if (!nameInput || !messageInput) return;
-
-        const name = nameInput.value.trim();
-        const location = locationInput ? locationInput.value.trim() : '';
-        const message = messageInput.value.trim();
-
-        if (!name) { showStatusAlert('Please enter your name.', 'error'); nameInput.focus(); return; }
-        if (!message) { showStatusAlert('Please enter a message.', 'error'); messageInput.focus(); return; }
-
-        const MAX_NAME = 50, MAX_LOCATION = 80, MAX_MESSAGE = 500;
-        if (name.length > MAX_NAME || location.length > MAX_LOCATION || message.length > MAX_MESSAGE) {
-          showStatusAlert('One of the fields is too long. Please shorten and try again.', 'error'); return;
-        }
-
-        const newEntry = { name, location, message, date: formatCommentDate(new Date()) };
-
-        const storageKey = getCarKey();
-        let savedComments = [];
-        try {
-          savedComments = safeParseJSON(localStorage.getItem(storageKey) || '[]', []);
-          if (!Array.isArray(savedComments)) savedComments = [];
-        } catch (err) { savedComments = []; }
-
-        savedComments.unshift(newEntry);
-
-        const MAX_COMMENTS = 500;
-        if (savedComments.length > MAX_COMMENTS) savedComments = savedComments.slice(0, MAX_COMMENTS);
-
-        try {
-          localStorage.setItem(storageKey, JSON.stringify(savedComments));
-        } catch (err) {
-          console.error('Failed to save comment', err);
-          showStatusAlert('Failed to save your comment. Your browser may have disabled storage or storage is full.', 'error');
-        }
-
-        const form = document.getElementById('guestbookForm');
-        if (form) form.reset();
-        loadGuestbook();
-        if (nameInput) nameInput.focus();
-        showStatusAlert('Thanks — your comment has been posted.', 'info');
-      }
-
-      function clearGuestbook() {
-        if (!confirm("Are you sure you want to clear the guestbook notes for this vehicle?")) return;
-        try {
-          localStorage.removeItem(getCarKey());
-        } catch (err) {
-          console.error('Failed to clear guestbook', err);
-          showStatusAlert('Unable to clear the guestbook in this browser.', 'error');
-          return;
-        }
-        loadGuestbook();
-      }
-
-      // ---------- Init & event wiring ----------
-      function init() {
-        // Load the car JSON and render
+      // ---------- Setup Event Listeners ----------
+      document.addEventListener('DOMContentLoaded', () => {
         loadCarData();
 
-        // QR modal open
-        const openQrBtn = document.getElementById('openQrBtn');
-        if (openQrBtn) openQrBtn.addEventListener('click', openQRModal);
+        document.getElementById('openQrBtn')?.addEventListener('click', openQRModal);
+        document.getElementById('qrCloseBtn')?.addEventListener('click', closeQRModal);
+        document.getElementById('lightboxCloseBtn')?.addEventListener('click', closeLightbox);
 
-        // qr close
-        const qrCloseBtn = document.getElementById('qrCloseBtn');
-        if (qrCloseBtn) qrCloseBtn.addEventListener('click', (e) => { e.stopPropagation(); closeQRModal(); });
+        document.getElementById('printBtn')?.addEventListener('click', () => window.print());
 
-        const printBtn = document.getElementById('printBtn');
-        if (printBtn) printBtn.addEventListener('click', printCard);
-
-        // print preview small QR (on-screen helper)
-        // this container is optional and will be populated during populatePrintCard
-
-        // Lightbox wiring
-        const lightboxCloseBtn = document.getElementById('lightboxCloseBtn');
-        if (lightboxCloseBtn) lightboxCloseBtn.addEventListener('click', closeLightbox);
-
-        const lightboxModal = document.getElementById('lightboxModal');
-        if (lightboxModal) lightboxModal.addEventListener('click', closeLightbox);
-        const lightboxContent = document.getElementById('lightboxContent');
-        if (lightboxContent) lightboxContent.addEventListener('click', ev => ev.stopPropagation());
-
-        // qr modal background click (and inner stop)
-        const qrModal = document.getElementById('qrModal');
-        if (qrModal) qrModal.addEventListener('click', closeQRModal);
-        const qrInner = qrModal ? qrModal.querySelector('.modal-inner') : null;
-        if (qrInner) qrInner.addEventListener('click', e => e.stopPropagation());
-
-        // Escape to close modals
-        document.addEventListener('keydown', (e) => {
+        window.addEventListener('keydown', (e) => {
           if (e.key === 'Escape') {
-            if (!document.getElementById('lightboxModal').classList.contains('hidden')) closeLightbox();
-            if (!document.getElementById('qrModal').classList.contains('hidden')) closeQRModal();
+            closeLightbox();
+            closeQRModal();
           }
         });
-
-        // Guestbook wiring
-        const guestbookForm = document.getElementById('guestbookForm');
-        if (guestbookForm) guestbookForm.addEventListener('submit', handleCommentSubmit);
-        const clearBtn = document.getElementById('clearGuestbookBtn');
-        if (clearBtn) clearBtn.addEventListener('click', clearGuestbook);
-
-        // load guestbook
-        loadGuestbook();
-      }
-
-      // Print wrapper (separate function name from earlier printCard used in modal)
-      function printCard() {
-        window.print();
-      }
-
-      // Start once DOM is ready
-      document.addEventListener('DOMContentLoaded', init);
+      });
     })();
   </script>
-
-  <!-- Lightweight placeholder 'qrcode' element used inside QR modal for on-screen preview (created when needed) -->
-  <div id="qrcode" class="hidden" aria-hidden="true"></div>
 </body>
 </html>
