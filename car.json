@@ -16,18 +16,19 @@
     "Bilstein adjustable dampers",
     "Reinforced suspension turrets"
   ],
-  "gallery": [
+    "gallery": [
     {
-      "url": "https://images.unsplash.com/photo-1583121274602-3e2820c69888?auto=format&fit=crop&w=800&q=80",
-      "caption": "Front 3/4 profile display view"
+      "url": "front.jpg",
+      "caption": "Front 3/4 display profile"
     },
     {
-      "url": "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=800&q=80",
+      "url": "engine.jpg",
       "caption": "Engine bay detail - Twin Webers"
     },
     {
-      "url": "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=80",
-      "caption": "Restoration stage - Body preparation"
+      "url": "interior.jpg",
+      "caption": "Restored interior and dash"
     }
   ]
+
 }
