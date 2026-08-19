@@ -18,6 +18,10 @@
   ],
     "gallery": [
     {
+      "url": "turret.jpg",
+      "caption": "Rear Turret"
+    },
+      {
       "url": "barn.jpg",
       "caption": "Barn find"
     },
