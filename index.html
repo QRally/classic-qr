@@ -11,6 +11,16 @@
   <style>
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Gallery image aspect and object-fit */
+    .gallery-thumb { aspect-ratio: 4/3; object-fit: cover; width: 100%; height: 100%; }
+
+    /* Print rules: hide controls and modals for printing the plaque */
+    @media print {
+      header, button, #editPanel, .actions, .gallery-actions, .file-drop, #qrModal { display: none !important; }
+      body { background: white !important; color: black !important; }
+      .print-only { display: block !important; }
+    }
   </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen font-sans pb-12">
@@ -136,7 +146,47 @@
       </p>
     </section>
 
+    <!-- Photo Gallery Section (moved inside <main>) -->
+    <section class="bg-slate-800 border border-slate-700 rounded-xl p-5 md:p-6 shadow-xl space-y-4">
+      <h2 class="text-amber-400 font-bold text-lg">Photo Gallery & Build Logs</h2>
+
+      <!-- File actions -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <label for="fileInput" class="px-3 py-2 bg-amber-500 text-slate-900 rounded cursor-pointer text-sm font-semibold">Add Photos</label>
+          <input id="fileInput" class="hidden" type="file" accept="image/*" multiple />
+          <button id="clearGalleryBtn" class="px-3 py-2 bg-slate-700 text-slate-200 rounded hover:bg-slate-600 text-sm">Clear Gallery</button>
+        </div>
+
+        <div class="text-sm text-slate-400">
+          <span id="galleryCount">0</span> images
+        </div>
+      </div>
+
+      <!-- Drag & Drop area -->
+      <div id="fileDrop" class="file-drop border-2 border-dashed border-slate-700 rounded p-4 text-center text-slate-400 bg-slate-900/40">
+        Drag & drop images here, or click "Add Photos"
+      </div>
+
+      <!-- Gallery grid -->
+      <div id="galleryContainer" class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+        <!-- Dynamic Images Inserted Here -->
+      </div>
+    </section>
+
   </main>
+
+  <!-- Image Lightbox Modal -->
+  <div id="imageModal" class="fixed inset-0 bg-black/80 z-50 hidden items-center justify-center p-4">
+    <div class="max-w-3xl w-full relative">
+      <button onclick="closeImageModal()" class="absolute top-3 right-3 text-white p-2 text-2xl">×</button>
+      <img id="modalImg" src="" alt="Preview" class="w-full h-auto rounded shadow-lg" />
+      <div class="flex justify-between mt-2">
+        <button id="deleteImageBtn" class="px-3 py-2 bg-red-600 text-white rounded">Delete Photo</button>
+        <button onclick="closeImageModal()" class="px-3 py-2 bg-slate-700 text-white rounded">Close</button>
+      </div>
+    </div>
+  </div>
 
   <!-- QR Code Modal -->
   <div id="qrModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
@@ -160,6 +210,7 @@
   <!-- JavaScript Logic -->
   <script>
     const STORAGE_KEY = 'classic_car_display_data';
+    const GALLERY_KEY = 'classic_car_display_gallery';
 
     // Default Profile Data
     let carData = {
@@ -173,11 +224,17 @@
       mods: '- Fast road camshaft profile\n- Ashley competition exhaust system\n- Bilstein adjustable dampers\n- Reinforced suspension turrets'
     };
 
+    // Gallery state (array of data URLs)
+    let gallery = [];
+    let currentPreviewIndex = null;
+
     // Initialize App
     document.addEventListener('DOMContentLoaded', () => {
       loadSavedData();
+      loadGallery();
       renderProfile();
       initQRCode();
+      initGalleryControls();
     });
 
     function renderProfile() {
@@ -240,7 +297,6 @@
     }
 
     // QR Code Generation
-    let qrGenerated = false;
     function initQRCode() {
       const currentUrl = window.location.href;
       document.getElementById('qrUrlText').innerText = currentUrl;
@@ -265,6 +321,186 @@
     function closeQRModal() {
       document.getElementById('qrModal').classList.add('hidden');
     }
+
+    /* Gallery functions */
+
+    function initGalleryControls() {
+      const fileInput = document.getElementById('fileInput');
+      const fileDrop = document.getElementById('fileDrop');
+      const clearBtn = document.getElementById('clearGalleryBtn');
+
+      // Click label already triggers file input via label for attribute
+      fileInput.addEventListener('change', (e) => {
+        handleFiles(e.target.files);
+        fileInput.value = ''; // reset
+      });
+
+      // Drag & Drop
+      ['dragenter','dragover'].forEach(evt => {
+        fileDrop.addEventListener(evt, (e) => {
+          e.preventDefault();
+          fileDrop.classList.add('border-amber-500', 'bg-slate-900/60');
+        });
+      });
+      ['dragleave','drop','dragend'].forEach(evt => {
+        fileDrop.addEventListener(evt, (e) => {
+          e.preventDefault();
+          fileDrop.classList.remove('border-amber-500', 'bg-slate-900/60');
+        });
+      });
+
+      fileDrop.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        if (!dt) return;
+        const files = dt.files;
+        handleFiles(files);
+      });
+
+      clearBtn.addEventListener('click', () => {
+        if (!confirm('Clear all saved gallery images?')) return;
+        gallery = [];
+        saveGallery();
+        renderGallery();
+      });
+
+      renderGallery();
+    }
+
+    function handleFiles(fileList) {
+      const files = Array.from(fileList).filter(f => f.type && f.type.startsWith('image/'));
+      if (files.length === 0) return;
+      // Limit total stored images to a reasonable number (e.g., 30)
+      const remainingSlots = Math.max(0, 30 - gallery.length);
+      const toProcess = files.slice(0, remainingSlots);
+
+      if (toProcess.length < files.length) {
+        alert('Gallery limit reached (30 images). Some files were not added.');
+      }
+
+      let processed = 0;
+      toProcess.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            gallery.push(ev.target.result);
+            processed++;
+            // Save after each load to avoid data loss
+            saveGallery();
+            renderGallery();
+          } catch(err) {
+            console.error('Error storing image', err);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function saveGallery() {
+      try {
+        localStorage.setItem(GALLERY_KEY, JSON.stringify(gallery));
+      } catch(err) {
+        console.error('Failed saving gallery (maybe storage quota).', err);
+        alert('Failed to save images locally. Try removing some images or use smaller files.');
+      }
+    }
+
+    function loadGallery() {
+      const raw = localStorage.getItem(GALLERY_KEY);
+      if (!raw) {
+        gallery = [];
+        return;
+      }
+      try {
+        gallery = JSON.parse(raw) || [];
+      } catch(err) {
+        console.error('Error parsing gallery', err);
+        gallery = [];
+      }
+      renderGallery();
+    }
+
+    function renderGallery() {
+      const container = document.getElementById('galleryContainer');
+      container.innerHTML = '';
+      document.getElementById('galleryCount').innerText = gallery.length;
+
+      if (gallery.length === 0) {
+        container.innerHTML = '<div class="col-span-full text-slate-400 text-sm">No photos yet — use "Add Photos" or drag & drop to upload.</div>';
+        return;
+      }
+
+      gallery.forEach((dataUrl, idx) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'relative bg-slate-800 rounded overflow-hidden shadow';
+
+        const img = document.createElement('img');
+        img.src = dataUrl;
+        img.alt = 'Car photo';
+        img.className = 'gallery-thumb cursor-pointer';
+        img.loading = 'lazy';
+        img.onclick = () => openImageModal(idx);
+
+        // overlay actions
+        const overlay = document.createElement('div');
+        overlay.className = 'absolute top-2 right-2 flex gap-2 opacity-0 hover:opacity-100 transition';
+        overlay.style.pointerEvents = 'auto';
+
+        const viewBtn = document.createElement('button');
+        viewBtn.className = 'px-2 py-1 bg-slate-700/70 text-white rounded text-xs';
+        viewBtn.innerText = 'View';
+        viewBtn.onclick = (e) => { e.stopPropagation(); openImageModal(idx); };
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'px-2 py-1 bg-red-600 text-white rounded text-xs';
+        delBtn.innerText = 'Delete';
+        delBtn.onclick = (e) => { e.stopPropagation(); deleteImage(idx); };
+
+        overlay.appendChild(viewBtn);
+        overlay.appendChild(delBtn);
+
+        wrapper.appendChild(img);
+        wrapper.appendChild(overlay);
+
+        container.appendChild(wrapper);
+      });
+    }
+
+    function openImageModal(index) {
+      currentPreviewIndex = index;
+      const modal = document.getElementById('imageModal');
+      const modalImg = document.getElementById('modalImg');
+      modalImg.src = gallery[index];
+      modal.classList.remove('hidden');
+
+      // wire delete button
+      document.getElementById('deleteImageBtn').onclick = () => {
+        if (!confirm('Delete this photo?')) return;
+        deleteImage(index);
+        closeImageModal();
+      };
+    }
+
+    function closeImageModal() {
+      currentPreviewIndex = null;
+      document.getElementById('imageModal').classList.add('hidden');
+      document.getElementById('modalImg').src = '';
+    }
+
+    function deleteImage(index) {
+      if (index < 0 || index >= gallery.length) return;
+      gallery.splice(index, 1);
+      saveGallery();
+      renderGallery();
+    }
+
+    // Expose close from HTML buttons if clicked outside
+    document.addEventListener('click', (e) => {
+      const modal = document.getElementById('imageModal');
+      if (!modal.classList.contains('hidden') && e.target === modal) {
+        closeImageModal();
+      }
+    });
+
   </script>
 </body>
 </html>
