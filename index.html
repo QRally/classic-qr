@@ -2,10 +2,10 @@
 <html lang="en-GB">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Classic Car Display Profile</title>
 
-  <!-- Tailwind and QR lib (deferred) -->
+  <!-- Tailwind + QR lib (deferred so page rendering isn't blocked) -->
   <script defer src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
@@ -16,20 +16,15 @@
     /* Prevent body scroll when a modal is open */
     .modal-open { overflow: hidden; }
 
-    /* Print card size and styles */
-    @page {
-      size: 90mm 55mm; /* suggested print size (credit-card-ish). Browser support varies. */
-      margin: 3mm;
-    }
-
-    /* Make the QR modal printable: only show the printable card when printing */
+    /* Printable card / @page */
+    @page { size: 90mm 55mm; margin: 3mm; }
     @media print {
       body * { visibility: hidden; }
       #printCard, #printCard * { visibility: visible; }
-      #printCard { position: fixed; top: 0; left: 0; right: 0; bottom: 0; margin: 0; }
+      #printCard { position: fixed; inset: 0; margin: 0; }
     }
 
-    /* Printable card inner styles (fallback if Tailwind not applied in print) */
+    /* Printable card fallback styles */
     .print-card {
       width: 90mm;
       height: 55mm;
@@ -45,56 +40,15 @@
       border: 1px solid #0f172a;
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
     }
+    .print-left { flex: 1 1 auto; display:flex; flex-direction:column; gap:4px; min-width:0; }
+    .print-title { font-weight:700; font-size:12px; line-height:1; color:#0b1220; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .print-sub { font-size:9px; color:#1f2937; }
+    .print-specs { margin-top:4px; font-size:9px; color:#111827; display:flex; gap:6px; flex-wrap:wrap; }
+    .print-footer { margin-top:auto; font-size:8px; color:#374151; }
+    .print-qr { width:44mm; height:44mm; display:flex; align-items:center; justify-content:center; background:white; border-radius:4px; flex:0 0 44mm; }
 
-    .print-left {
-      flex: 1 1 auto;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      min-width: 0;
-    }
-    .print-title {
-      font-weight: 700;
-      font-size: 12px;
-      line-height: 1;
-      color: #0b1220;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .print-sub {
-      font-size: 9px;
-      color: #1f2937;
-    }
-    .print-specs {
-      margin-top: 4px;
-      font-size: 9px;
-      color: #111827;
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-    .print-footer {
-      margin-top: auto;
-      font-size: 8px;
-      color: #374151;
-    }
-
-    .print-qr {
-      width: 44mm;
-      height: 44mm;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      background:white;
-      border-radius:4px;
-      flex: 0 0 44mm;
-    }
-
-    /* Small adjustments for screen modal view */
-    #qrModal .modal-inner {
-      max-width: 420px;
-    }
+    /* Small modal inner sizing */
+    #qrModal .modal-inner { max-width: 420px; }
   </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen font-sans pb-12">
@@ -112,20 +66,106 @@
     </div>
   </header>
 
-  <!-- Main Container (omitted earlier sections for brevity; assume same as your master) -->
+  <!-- Main Container -->
   <main class="max-w-3xl mx-auto px-4 mt-4 space-y-6">
-    <!-- ... your main content (title, specs, gallery, guestbook) unchanged ... -->
-    <!-- For brevity, the rest of the main UI is unchanged from your master file -->
+
+    <!-- Status / alert -->
+    <div id="statusAlert" class="hidden p-4 rounded-xl border bg-slate-800 text-sm" role="status" aria-live="polite"></div>
+
+    <!-- Display plaque -->
+    <section class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-xl">
+      <div class="p-6 md:p-8 border-b border-slate-700/80 bg-gradient-to-r from-slate-800 to-slate-800/50">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <span id="displayYear" class="inline-block bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-semibold px-2.5 py-0.5 rounded-full mb-2">----</span>
+            <h1 id="displayTitle" class="text-3xl md:text-4xl font-extrabold text-white tracking-tight">Loading Vehicle Data...</h1>
+            <p id="displaySubtitle" class="text-slate-400 mt-1 text-sm">Classic Show Display</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Specs -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-px bg-slate-700/40 text-center text-sm">
+        <div class="bg-slate-800 p-3">
+          <span class="block text-xs text-slate-400 uppercase tracking-wider">Engine</span>
+          <span id="displayEngine" class="font-semibold text-slate-100">--</span>
+        </div>
+        <div class="bg-slate-800 p-3">
+          <span class="block text-xs text-slate-400 uppercase tracking-wider">Colour</span>
+          <span id="displayColour" class="font-semibold text-slate-100">--</span>
+        </div>
+        <div class="bg-slate-800 p-3">
+          <span class="block text-xs text-slate-400 uppercase tracking-wider">Transmission</span>
+          <span id="displayTrans" class="font-semibold text-slate-100">--</span>
+        </div>
+        <div class="bg-slate-800 p-3">
+          <span class="block text-xs text-slate-400 uppercase tracking-wider">Tyres</span>
+          <span id="displayTyres" class="font-semibold text-slate-100">--</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Overview -->
+    <section class="bg-slate-800 border border-slate-700 rounded-xl p-5 md:p-6 shadow-xl space-y-3">
+      <h2 class="text-amber-400 font-bold text-lg">Overview & Vehicle History</h2>
+      <p id="displayHistory" class="text-slate-300 leading-relaxed text-sm md:text-base whitespace-pre-line">Loading description...</p>
+    </section>
+
+    <!-- Mods -->
+    <section class="bg-slate-800 border border-slate-700 rounded-xl p-5 md:p-6 shadow-xl space-y-3">
+      <h2 class="text-amber-400 font-bold text-lg">Modifications & Build Notes</h2>
+      <p id="displayMods" class="text-slate-300 leading-relaxed text-sm md:text-base whitespace-pre-line">Loading specs...</p>
+    </section>
+
+    <!-- Gallery -->
+    <section class="bg-slate-800 border border-slate-700 rounded-xl p-5 md:p-6 shadow-xl space-y-4">
+      <h2 class="text-amber-400 font-bold text-lg">Photo Gallery & Restoration</h2>
+      <div id="galleryContainer" class="grid grid-cols-1 sm:grid-cols-3 gap-3" aria-live="polite"></div>
+    </section>
+
+    <!-- Guestbook -->
+    <section class="bg-slate-800 border border-slate-700 rounded-xl p-5 md:p-6 shadow-xl space-y-4" aria-labelledby="guestbookTitle">
+      <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+        <h2 id="guestbookTitle" class="text-amber-400 font-bold text-lg">Visitor Guestbook</h2>
+        <span id="commentCount" class="text-xs bg-slate-700 text-slate-300 px-2.5 py-1 rounded-full font-mono" aria-live="polite">0 Comments</span>
+      </div>
+
+      <form id="guestbookForm" class="space-y-3" novalidate>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <input type="text" id="guestName" name="name" placeholder="Your Name / Handle" required maxlength="50" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-amber-500" />
+          <input type="text" id="guestLocation" name="location" placeholder="Town / Motor Club (Optional)" maxlength="80" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-amber-500" />
+        </div>
+        <textarea id="guestMessage" name="message" rows="2" placeholder="Leave a comment or memory for the owner..." required maxlength="500" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-amber-500"></textarea>
+        <div class="flex justify-between items-center">
+          <button id="clearGuestbookBtn" type="button" class="text-slate-500 hover:text-red-400 text-xs transition">Clear All</button>
+          <button id="postGuestbookBtn" type="submit" class="bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold text-xs px-4 py-2 rounded-lg transition">Post Comment</button>
+        </div>
+      </form>
+
+      <div id="commentsFeed" class="space-y-3 pt-2 max-h-72 overflow-y-auto no-scrollbar" aria-live="polite"></div>
+    </section>
+
   </main>
 
-  <!-- QR Code Modal (printable) -->
+  <!-- Lightbox Modal -->
+  <div id="lightboxModal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden flex flex-col items-center justify-center p-4" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="lightboxTitle">
+    <div class="max-w-3xl w-full text-right mb-2">
+      <button id="lightboxCloseBtn" class="text-slate-400 hover:text-white text-sm bg-slate-800 px-3 py-1 rounded border border-slate-700" type="button">Close ✕</button>
+    </div>
+    <div id="lightboxContent" class="w-full flex flex-col items-center" tabindex="-1">
+      <h3 id="lightboxTitle" class="sr-only">Image preview</h3>
+      <img id="lightboxImg" class="max-h-[80vh] max-w-full rounded-lg shadow-2xl object-contain border border-slate-700" src="" alt="" />
+      <p id="lightboxCaption" class="text-slate-300 text-sm mt-3 text-center"></p>
+    </div>
+  </div>
+
+  <!-- QR Modal (contains printable card preview) -->
   <div id="qrModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="qrTitle">
     <div class="modal-inner bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl relative">
       <button id="qrCloseBtn" class="absolute top-3 right-3 text-slate-400 hover:text-white p-2" type="button" aria-label="Close QR dialog">✕</button>
       <h3 id="qrTitle" class="text-lg font-bold text-white mb-1">Windscreen Display QR</h3>
       <p class="text-xs text-slate-400 mb-4">Scan to view this vehicle profile on any mobile device. Use the Print button to produce a small windscreen label.</p>
 
-      <!-- Printable card preview (on-screen) -->
       <div id="printPreview" class="mx-auto bg-white rounded-lg p-3 inline-block shadow-inner mb-4" style="width:320px;">
         <div id="printCard" class="print-card" role="document" aria-label="Printable vehicle display">
           <div class="print-left">
@@ -149,84 +189,201 @@
     </div>
   </div>
 
-  <!-- Minimal required scripts for print feature; keep the rest of your master JS -->
+  <!-- Main JS (single IIFE) -->
   <script>
     (function () {
-      // Keep a reference to the last-loaded car data so printable card can show it
-      let lastCarData = null;
+      // Globals
+      let currentGallery = [];
+      let lastFocusedElement = null;
+      let activeFocusTrap = null;
+      let carData = null; // holds last-loaded JSON for printable card
 
-      // Reuse or adapt your existing functions to populate the printable card
-      function populatePrintCard(data) {
-        lastCarData = data || {};
-        const title = (data && data.title) ? data.title : 'Untitled Classic';
-        const year = (data && data.year) ? data.year : 'N/A';
-        const entry = (data && data.entryNumber) ? `Entry #${data.entryNumber}` : '';
-        const engine = (data && data.specs && data.specs.engine) ? data.specs.engine : '--';
-        const colour = (data && data.specs && data.specs.colour) ? data.specs.colour : '--';
-        const owner = (data && data.owner) ? data.owner : '';
-
-        document.getElementById('pc-title').textContent = title;
-        document.getElementById('pc-sub').textContent = `${year}${entry ? ' • ' + entry : ''}`;
-        document.getElementById('pc-engine').textContent = `Engine: ${engine}`;
-        document.getElementById('pc-colour').textContent = `Colour: ${colour}`;
-        document.getElementById('pc-footer').textContent = owner ? `Owner: ${owner}` : '';
-
-        // Generate QR inside printQrContainer
-        const url = window.location.href;
-        const qrParent = document.getElementById('printQrContainer');
-        qrParent.innerHTML = '';
-        if (typeof QRCode !== 'undefined') {
-          try {
-            new QRCode(qrParent, {
-              text: url,
-              width: qrParent.clientWidth,
-              height: qrParent.clientHeight,
-              colorDark: "#0f172a",
-              colorLight: "#ffffff",
-              correctLevel: QRCode.CorrectLevel ? QRCode.CorrectLevel.H : undefined
-            });
-          } catch (err) {
-            // fallback: use text
-            qrParent.textContent = url;
-          }
-        } else {
-          qrParent.textContent = url;
-        }
-
-        // Also update the URL display text
-        document.getElementById('qrUrlText').textContent = url;
+      // ---------- Utilities ----------
+      function showStatusAlert(content, type = 'info') {
+        const el = document.getElementById('statusAlert');
+        el.classList.remove('hidden');
+        el.className = `p-4 rounded-xl border text-sm ${type === 'error' ? 'bg-red-950/50 border-red-800 text-red-200' : 'bg-slate-800 border-slate-700 text-slate-300'}`;
+        el.textContent = String(content);
       }
 
-      // Hook up modal open/close and print button
-      function openQRModal() {
-        const modal = document.getElementById('qrModal');
+      // ---------- Data Loading & Rendering ----------
+      async function loadCarData() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const carFile = urlParams.get('car') || 'car';
+        const targetJson = `./${carFile}.json?t=${Date.now()}`;
+
+        try {
+          const response = await fetch(targetJson, { cache: 'no-store' });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const data = await response.json();
+          carData = data;
+          renderProfile(data);
+        } catch (err) {
+          console.error('Error fetching car data:', err);
+          showStatusAlert(`Unable to load ${`./${carFile}.json`}. Please check that your JSON file exists in the repository.`, 'error');
+        }
+      }
+
+      function renderProfile(data) {
+        data = data || {};
+        document.getElementById('displayTitle').textContent = data.title || 'Untitled Classic';
+        document.getElementById('displayYear').textContent = data.year || 'N/A';
+        document.getElementById('displaySubtitle').textContent = data.entryNumber ? `Classic Show Entry #${data.entryNumber}` : 'Classic Show Display';
+
+        if (data.specs && typeof data.specs === 'object') {
+          document.getElementById('displayEngine').textContent = data.specs.engine || '--';
+          document.getElementById('displayColour').textContent = data.specs.colour || '--';
+          document.getElementById('displayTrans').textContent = data.specs.transmission || '--';
+          document.getElementById('displayTyres').textContent = data.specs.tyres || '--';
+        }
+
+        document.getElementById('displayHistory').textContent = data.overview || 'No history provided.';
+
+        if (Array.isArray(data.modifications)) {
+          document.getElementById('displayMods').textContent = data.modifications.map(m => `• ${m}`).join('\n');
+        } else {
+          document.getElementById('displayMods').textContent = data.modifications || 'Standard factory specification.';
+        }
+
+        // Gallery
+        const galleryEl = document.getElementById('galleryContainer');
+        galleryEl.innerHTML = '';
+        if (Array.isArray(data.gallery) && data.gallery.length > 0) {
+          currentGallery = data.gallery.slice();
+          currentGallery.forEach((img, index) => {
+            const wrap = document.createElement('div');
+            wrap.className = 'group relative rounded-lg overflow-hidden border border-slate-700 bg-slate-900 aspect-video cursor-pointer';
+            wrap.setAttribute('role', 'button');
+            wrap.setAttribute('tabindex', '0');
+            wrap.setAttribute('aria-label', img.caption ? img.caption : `Vehicle image ${index + 1}`);
+            wrap.addEventListener('click', () => openLightboxByIndex(index));
+            wrap.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLightboxByIndex(index); } });
+
+            const imageEl = document.createElement('img');
+            try { imageEl.src = new URL(String(img.url), window.location.href).href; } catch (urlErr) { imageEl.src = String(img.url || ''); }
+            imageEl.alt = img.caption ? String(img.caption) : `Vehicle image ${index + 1}`;
+            imageEl.loading = 'lazy';
+            imageEl.className = 'w-full h-full object-cover group-hover:scale-105 transition duration-300';
+            wrap.appendChild(imageEl);
+
+            const overlay = document.createElement('div');
+            overlay.className = 'absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition p-2 flex items-end';
+            const captionP = document.createElement('p');
+            captionP.className = 'text-xs text-slate-200 truncate';
+            captionP.textContent = img.caption || '';
+            overlay.appendChild(captionP);
+
+            wrap.appendChild(overlay);
+            galleryEl.appendChild(wrap);
+          });
+        } else {
+          const none = document.createElement('p');
+          none.className = 'text-slate-500 text-sm col-span-3';
+          none.textContent = 'No images uploaded for this vehicle.';
+          galleryEl.appendChild(none);
+          currentGallery = [];
+        }
+      }
+
+      // ---------- QR generation ----------
+      function makeQRCode(container, url, size) {
+        if (!container) return;
+        container.innerHTML = '';
+        if (typeof QRCode === 'undefined') {
+          container.textContent = url;
+          return;
+        }
+        try {
+          new QRCode(container, {
+            text: url,
+            width: size || 180,
+            height: size || 180,
+            colorDark: "#0f172a",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel ? QRCode.CorrectLevel.H : undefined
+          });
+        } catch (err) {
+          try { new QRCode(container, url); } catch (err2) { container.textContent = url; }
+        }
+      }
+
+      // ---------- Focus trap ----------
+      function trapFocus(container) {
+        const focusableSelector = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
+        const nodes = Array.from(container.querySelectorAll(focusableSelector)).filter(n => n.offsetParent !== null);
+        if (nodes.length === 0) return () => {};
+        let first = nodes[0], last = nodes[nodes.length -1];
+        function handleTab(e) {
+          if (e.key !== 'Tab') return;
+          if (e.shiftKey) {
+            if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+          } else {
+            if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+          }
+        }
+        document.addEventListener('keydown', handleTab);
+        return () => document.removeEventListener('keydown', handleTab);
+      }
+
+      // ---------- Lightbox ----------
+      function openLightboxByIndex(index) {
+        if (!currentGallery || !currentGallery[index]) return;
+        const img = currentGallery[index];
+        const modal = document.getElementById('lightboxModal');
+        const imgEl = document.getElementById('lightboxImg');
+        const captionEl = document.getElementById('lightboxCaption');
+
+        imgEl.src = (function () { try { return new URL(String(img.url), window.location.href).href; } catch(e) { return String(img.url || ''); } })();
+        imgEl.alt = img.caption || `Vehicle image ${index + 1}`;
+        captionEl.textContent = img.caption || '';
+        lastFocusedElement = document.activeElement;
         modal.classList.remove('hidden');
         modal.setAttribute('aria-hidden', 'false');
         document.body.classList.add('modal-open');
-        // Populate with the current car data. If you have a renderProfile function that saved the JSON, use it.
-        // Here we attempt to fetch the JSON in the same way the page does, then populate. If you already keep car data global,
-        // replace the fetch below with that variable.
-        const params = new URLSearchParams(window.location.search);
-        const carFile = params.get('car') || 'car';
-        const targetJson = `./${carFile}.json?t=${Date.now()}`;
-        fetch(targetJson, { cache: 'no-store' })
-          .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-          .then(json => populatePrintCard(json))
-          .catch(err => {
-            console.warn('Could not fetch car JSON for print preview, falling back to visible page content', err);
-            // Fallback: read from visible fields
-            const fallback = {
-              title: document.getElementById('displayTitle')?.textContent || '',
-              year: document.getElementById('displayYear')?.textContent || '',
-              entryNumber: (document.getElementById('displaySubtitle')?.textContent || '').replace('Classic Show Entry #','') || '',
-              specs: {
-                engine: document.getElementById('displayEngine')?.textContent || '',
-                colour: document.getElementById('displayColour')?.textContent || ''
-              },
-              owner: ''
-            };
-            populatePrintCard(fallback);
-          });
+
+        const closeBtn = document.getElementById('lightboxCloseBtn');
+        closeBtn.focus();
+        activeFocusTrap = trapFocus(modal);
+      }
+
+      function closeLightbox() {
+        const modal = document.getElementById('lightboxModal');
+        const imgEl = document.getElementById('lightboxImg');
+        modal.classList.add('hidden');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
+
+        if (typeof activeFocusTrap === 'function') { activeFocusTrap(); activeFocusTrap = null; }
+        if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') lastFocusedElement.focus();
+
+        imgEl.src = '';
+        imgEl.alt = '';
+      }
+
+      // ---------- QR Modal + printable card ----------
+      function openQRModal() {
+        const modal = document.getElementById('qrModal');
+        lastFocusedElement = document.activeElement;
+
+        // Populate printable preview from carData (if available), otherwise fallback to DOM text
+        populatePrintCard(carData || {
+          title: document.getElementById('displayTitle')?.textContent || '',
+          year: document.getElementById('displayYear')?.textContent || '',
+          entryNumber: (document.getElementById('displaySubtitle')?.textContent || '').replace('Classic Show Entry #','') || '',
+          specs: {
+            engine: document.getElementById('displayEngine')?.textContent || '',
+            colour: document.getElementById('displayColour')?.textContent || ''
+          },
+          owner: ''
+        });
+
+        modal.classList.remove('hidden');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
+
+        const closeBtn = document.getElementById('qrCloseBtn');
+        closeBtn.focus();
+        activeFocusTrap = trapFocus(modal);
       }
 
       function closeQRModal() {
@@ -234,33 +391,258 @@
         modal.classList.add('hidden');
         modal.setAttribute('aria-hidden', 'true');
         document.body.classList.remove('modal-open');
+
+        if (typeof activeFocusTrap === 'function') { activeFocusTrap(); activeFocusTrap = null; }
+        if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') lastFocusedElement.focus();
+
+        // clear QR containers
+        document.getElementById('qrcode')?.innerHTML && (document.getElementById('qrcode').innerHTML = '');
+        document.getElementById('printQrContainer')?.innerHTML && (document.getElementById('printQrContainer').innerHTML = '');
+        document.getElementById('qrUrlText').textContent = '';
       }
 
-      // Print: open print dialog. Printing will use the @media print rules above that show only the #printCard
+      function populatePrintCard(data) {
+        data = data || {};
+        carData = data;
+        const title = data.title || 'Untitled Classic';
+        const year = data.year || 'N/A';
+        const entry = data.entryNumber ? `Entry #${data.entryNumber}` : '';
+        const engine = data.specs && data.specs.engine ? data.specs.engine : '--';
+        const colour = data.specs && data.specs.colour ? data.specs.colour : '--';
+        const owner = data.owner || '';
+
+        document.getElementById('pc-title').textContent = title;
+        document.getElementById('pc-sub').textContent = `${year}${entry ? ' • ' + entry : ''}`;
+        document.getElementById('pc-engine').textContent = `Engine: ${engine}`;
+        document.getElementById('pc-colour').textContent = `Colour: ${colour}`;
+        document.getElementById('pc-footer').textContent = owner ? `Owner: ${owner}` : '';
+
+        const url = window.location.href;
+        // generate small QR for the modal preview (also used for print)
+        // a visible QR (non-print) to aid scanning on-screen
+        const qrUrlTextEl = document.getElementById('qrUrlText');
+        qrUrlTextEl.textContent = url;
+
+        // generate two QRs: one small (qrcode) and one sized to the print area (printQrContainer)
+        const qrcodeEl = document.getElementById('qrcode');
+        if (qrcodeEl) makeQRCode(qrcodeEl, url, 160);
+
+        const printQrEl = document.getElementById('printQrContainer');
+        if (printQrEl) {
+          // size in px approximated from our print-qr mm size; we use clientWidth to fit.
+          const size = Math.min(printQrEl.clientWidth, printQrEl.clientHeight) || 180;
+          makeQRCode(printQrEl, url, size);
+        }
+      }
+
       function printCard() {
-        // Before printing, you can ensure the QR is a vector (SVG) or image for better printer quality.
-        // For now, we rely on the QR library to render an image/canvas/SVG in the print container.
+        // printing will use the @media print rules to show only the #printCard
         window.print();
       }
 
-      // Wire up the modal buttons
-      document.addEventListener('DOMContentLoaded', () => {
-        const openBtn = document.getElementById('openQrBtn');
-        if (openBtn) openBtn.addEventListener('click', openQRModal);
+      // ---------- Guestbook ----------
+      function getCarKey() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const carFile = urlParams.get('car') || 'car';
+        return `guestbook_${carFile}`;
+      }
 
-        const closeBtn = document.getElementById('qrCloseBtn');
-        if (closeBtn) closeBtn.addEventListener('click', (e) => { e.stopPropagation(); closeQRModal(); });
+      function safeParseJSON(jsonStr, fallback) {
+        try { return JSON.parse(jsonStr); } catch (e) { return fallback; }
+      }
+
+      function formatCommentDate(d = new Date()) {
+        return d.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      }
+
+      function loadGuestbook() {
+        const storageKey = getCarKey();
+        let savedComments = [];
+        try {
+          savedComments = safeParseJSON(localStorage.getItem(storageKey) || '[]', []);
+          if (!Array.isArray(savedComments)) savedComments = [];
+        } catch (err) {
+          console.error('Guestbook load error', err);
+          showStatusAlert('Unable to read saved comments from local storage. Comments will not persist in this browser.', 'error');
+          savedComments = [];
+        }
+
+        const countEl = document.getElementById('commentCount');
+        const feedEl = document.getElementById('commentsFeed');
+
+        if (countEl) countEl.textContent = `${savedComments.length} Comment${savedComments.length === 1 ? '' : 's'}`;
+        if (!feedEl) return;
+        feedEl.innerHTML = '';
+
+        if (savedComments.length === 0) {
+          const p = document.createElement('p');
+          p.className = 'text-slate-500 text-xs italic text-center py-4';
+          p.textContent = 'No comments left yet. Be the first to leave a note!';
+          feedEl.appendChild(p);
+          return;
+        }
+
+        savedComments.forEach(c => {
+          const wrapper = document.createElement('div');
+          wrapper.className = 'bg-slate-900/80 border border-slate-700/60 rounded-lg p-3 space-y-1';
+
+          const header = document.createElement('div');
+          header.className = 'flex justify-between items-start';
+
+          const left = document.createElement('div');
+          const nameSpan = document.createElement('span');
+          nameSpan.className = 'text-amber-400 text-xs font-semibold';
+          nameSpan.textContent = c.name || 'Anonymous';
+          left.appendChild(nameSpan);
+
+          if (c.location) {
+            const locSpan = document.createElement('span');
+            locSpan.className = 'text-slate-500 text-[11px] ml-1.5';
+            locSpan.textContent = `• ${c.location}`;
+            left.appendChild(locSpan);
+          }
+
+          const dateSpan = document.createElement('span');
+          dateSpan.className = 'text-slate-500 text-[10px] font-mono';
+          dateSpan.textContent = c.date || '';
+
+          header.appendChild(left);
+          header.appendChild(dateSpan);
+
+          const messageP = document.createElement('p');
+          messageP.className = 'text-slate-300 text-xs leading-relaxed';
+          messageP.textContent = c.message || '';
+
+          wrapper.appendChild(header);
+          wrapper.appendChild(messageP);
+
+          feedEl.appendChild(wrapper);
+        });
+      }
+
+      function handleCommentSubmit(event) {
+        event.preventDefault();
+
+        const nameInput = document.getElementById('guestName');
+        const locationInput = document.getElementById('guestLocation');
+        const messageInput = document.getElementById('guestMessage');
+        if (!nameInput || !messageInput) return;
+
+        const name = nameInput.value.trim();
+        const location = locationInput ? locationInput.value.trim() : '';
+        const message = messageInput.value.trim();
+
+        if (!name) { showStatusAlert('Please enter your name.', 'error'); nameInput.focus(); return; }
+        if (!message) { showStatusAlert('Please enter a message.', 'error'); messageInput.focus(); return; }
+
+        const MAX_NAME = 50, MAX_LOCATION = 80, MAX_MESSAGE = 500;
+        if (name.length > MAX_NAME || location.length > MAX_LOCATION || message.length > MAX_MESSAGE) {
+          showStatusAlert('One of the fields is too long. Please shorten and try again.', 'error'); return;
+        }
+
+        const newEntry = { name, location, message, date: formatCommentDate(new Date()) };
+
+        const storageKey = getCarKey();
+        let savedComments = [];
+        try {
+          savedComments = safeParseJSON(localStorage.getItem(storageKey) || '[]', []);
+          if (!Array.isArray(savedComments)) savedComments = [];
+        } catch (err) { savedComments = []; }
+
+        savedComments.unshift(newEntry);
+
+        const MAX_COMMENTS = 500;
+        if (savedComments.length > MAX_COMMENTS) savedComments = savedComments.slice(0, MAX_COMMENTS);
+
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(savedComments));
+        } catch (err) {
+          console.error('Failed to save comment', err);
+          showStatusAlert('Failed to save your comment. Your browser may have disabled storage or storage is full.', 'error');
+        }
+
+        const form = document.getElementById('guestbookForm');
+        if (form) form.reset();
+        loadGuestbook();
+        if (nameInput) nameInput.focus();
+        showStatusAlert('Thanks — your comment has been posted.', 'info');
+      }
+
+      function clearGuestbook() {
+        if (!confirm("Are you sure you want to clear the guestbook notes for this vehicle?")) return;
+        try {
+          localStorage.removeItem(getCarKey());
+        } catch (err) {
+          console.error('Failed to clear guestbook', err);
+          showStatusAlert('Unable to clear the guestbook in this browser.', 'error');
+          return;
+        }
+        loadGuestbook();
+      }
+
+      // ---------- Init & event wiring ----------
+      function init() {
+        // Load the car JSON and render
+        loadCarData();
+
+        // QR modal open
+        const openQrBtn = document.getElementById('openQrBtn');
+        if (openQrBtn) openQrBtn.addEventListener('click', openQRModal);
+
+        // qr close
+        const qrCloseBtn = document.getElementById('qrCloseBtn');
+        if (qrCloseBtn) qrCloseBtn.addEventListener('click', (e) => { e.stopPropagation(); closeQRModal(); });
 
         const printBtn = document.getElementById('printBtn');
         if (printBtn) printBtn.addEventListener('click', printCard);
 
-        // Also close modal when backdrop clicked
+        // print preview small QR (on-screen helper)
+        // this container is optional and will be populated during populatePrintCard
+
+        // Lightbox wiring
+        const lightboxCloseBtn = document.getElementById('lightboxCloseBtn');
+        if (lightboxCloseBtn) lightboxCloseBtn.addEventListener('click', closeLightbox);
+
+        const lightboxModal = document.getElementById('lightboxModal');
+        if (lightboxModal) lightboxModal.addEventListener('click', closeLightbox);
+        const lightboxContent = document.getElementById('lightboxContent');
+        if (lightboxContent) lightboxContent.addEventListener('click', ev => ev.stopPropagation());
+
+        // qr modal background click (and inner stop)
         const qrModal = document.getElementById('qrModal');
         if (qrModal) qrModal.addEventListener('click', closeQRModal);
         const qrInner = qrModal ? qrModal.querySelector('.modal-inner') : null;
         if (qrInner) qrInner.addEventListener('click', e => e.stopPropagation());
-      });
+
+        // Escape to close modals
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') {
+            if (!document.getElementById('lightboxModal').classList.contains('hidden')) closeLightbox();
+            if (!document.getElementById('qrModal').classList.contains('hidden')) closeQRModal();
+          }
+        });
+
+        // Guestbook wiring
+        const guestbookForm = document.getElementById('guestbookForm');
+        if (guestbookForm) guestbookForm.addEventListener('submit', handleCommentSubmit);
+        const clearBtn = document.getElementById('clearGuestbookBtn');
+        if (clearBtn) clearBtn.addEventListener('click', clearGuestbook);
+
+        // load guestbook
+        loadGuestbook();
+      }
+
+      // Print wrapper (separate function name from earlier printCard used in modal)
+      function printCard() {
+        window.print();
+      }
+
+      // Start once DOM is ready
+      document.addEventListener('DOMContentLoaded', init);
     })();
   </script>
+
+  <!-- Lightweight placeholder 'qrcode' element used inside QR modal for on-screen preview (created when needed) -->
+  <div id="qrcode" class="hidden" aria-hidden="true"></div>
 </body>
 </html>
