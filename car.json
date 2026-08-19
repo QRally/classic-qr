@@ -22,6 +22,10 @@
       "caption": "Rear Turret"
     },
       {
+      "url": "bilstein.jpg",
+      "caption": "Front Suspension"
+    },
+      {
       "url": "barn.jpg",
       "caption": "Barn find"
     },
@@ -32,6 +36,10 @@
     {
       "url": "back.jpg",
       "caption": "Rear detail"
+    },
+   {
+      "url": "engine.jpg",
+      "caption": "Engine Bay"
     },
     {
       "url": "interior.jpg",
