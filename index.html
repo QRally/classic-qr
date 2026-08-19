@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Classic Car Display Profile</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- QRCode.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans pb-12">
+
+  <!-- Navigation / Header -->
+  <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-30 shadow-md">
+    <div class="max-w-3xl mx-auto px-4 py-3 flex justify-between items-center">
+      <div class="flex items-center space-x-2">
+        <span class="text-amber-500 font-bold text-xl tracking-wide uppercase">Classic Display</span>
+      </div>
+      <button id="toggleEditBtn" onclick="toggleEditMode()" class="bg-slate-700 hover:bg-slate-600 text-xs text-amber-400 font-semibold py-1.5 px-3 rounded border border-amber-500/30 transition">
+        Owner Edit Mode
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-3xl mx-auto px-4 mt-4 space-y-6">
+
+    <!-- Owner Edit Form (Hidden by default) -->
+    <section id="editPanel" class="hidden bg-slate-800 border border-amber-500/40 rounded-xl p-5 shadow-xl space-y-4">
+      <h2 class="text-amber-400 font-semibold text-lg border-b border-slate-700 pb-2">Edit Car Profile</h2>
+      <form id="carForm" onsubmit="saveData(event)" class="space-y-3 text-sm">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-400 mb-1">Make & Model</label>
+            <input type="text" id="inputTitle" required class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white focus:outline-none focus:border-amber-500">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Year</label>
+            <input type="text" id="inputYear" required class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white focus:outline-none focus:border-amber-500">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Engine & Drivetrain</label>
+            <input type="text" id="inputEngine" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white focus:outline-none focus:border-amber-500">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Colour</label>
+            <input type="text" id="inputColour" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white focus:outline-none focus:border-amber-500">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Transmission</label>
+            <input type="text" id="inputTrans" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white focus:outline-none focus:border-amber-500">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Tyres & Wheels</label>
+            <input type="text" id="inputTyres" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white focus:outline-none focus:border-amber-500">
+          </div>
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Vehicle Overview / History</label>
+          <textarea id="inputHistory" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white focus:outline-none focus:border-amber-500"></textarea>
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Modifications & Restoration Specs</label>
+          <textarea id="inputMods" rows="2" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white focus:outline-none focus:border-amber-500"></textarea>
+        </div>
+        <div class="flex justify-end space-x-2 pt-2">
+          <button type="button" onclick="toggleEditMode()" class="px-4 py-2 bg-slate-700 text-slate-300 rounded hover:bg-slate-600">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-amber-500 text-slate-900 font-bold rounded hover:bg-amber-400">Save Profile</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Display Plaque (Hero Section) -->
+    <section class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-xl">
+      <div class="p-6 md:p-8 border-b border-slate-700/80 bg-gradient-to-r from-slate-800 to-slate-800/50">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <span id="displayYear" class="inline-block bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-semibold px-2.5 py-0.5 rounded-full mb-2">1973</span>
+            <h1 id="displayTitle" class="text-3xl md:text-4xl font-extrabold text-white tracking-tight">Ford Escort RS2000 Mk1</h1>
+            <p id="displaySubtitle" class="text-slate-400 mt-1 text-sm">Classic Show Entry #142</p>
+          </div>
+          <!-- QR Display Button -->
+          <button onclick="openQRModal()" class="flex items-center justify-center space-x-2 bg-slate-700/60 hover:bg-slate-700 border border-slate-600 p-3 rounded-lg transition text-slate-200">
+            <svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+            <span class="text-xs font-medium">Show QR Code</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Specs Grid -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-px bg-slate-700/40 text-center text-sm">
+        <div class="bg-slate-800 p-3">
+          <span class="block text-xs text-slate-400 uppercase tracking-wider">Engine</span>
+          <span id="displayEngine" class="font-semibold text-slate-100">2.0L Pinto Inline-4</span>
+        </div>
+        <div class="bg-slate-800 p-3">
+          <span class="block text-xs text-slate-400 uppercase tracking-wider">Colour</span>
+          <span id="displayColour" class="font-semibold text-slate-100">Diamond White</span>
+        </div>
+        <div class="bg-slate-800 p-3">
+          <span class="block text-xs text-slate-400 uppercase tracking-wider">Transmission</span>
+          <span id="displayTrans" class="font-semibold text-slate-100">4-Speed Manual</span>
+        </div>
+        <div class="bg-slate-800 p-3">
+          <span class="block text-xs text-slate-400 uppercase tracking-wider">Tyres</span>
+          <span id="displayTyres" class="font-semibold text-slate-100">13" RS Alloys / Yokohama</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- History & Details -->
+    <section class="bg-slate-800 border border-slate-700 rounded-xl p-5 md:p-6 shadow-xl space-y-4">
+      <h2 class="text-amber-400 font-bold text-lg flex items-center gap-2">
+        <span>Overview & History</span>
+      </h2>
+      <p id="displayHistory" class="text-slate-300 leading-relaxed text-sm md:text-base whitespace-pre-line">
+        Fully restored Mk1 RS2000. Originally registered in the UK in late 1973. Features period-correct Weber 44 DCNF carburettors, Group 1 suspension setup, and original RS interior trim. Maintained for regional road runs and historic display events.
+      </p>
+    </section>
+
+    <!-- Modifications & Specs -->
+    <section class="bg-slate-800 border border-slate-700 rounded-xl p-5 md:p-6 shadow-xl space-y-4">
+      <h2 class="text-amber-400 font-bold text-lg flex items-center gap-2">
+        <span>Modifications & Build Notes</span>
+      </h2>
+      <p id="displayMods" class="text-slate-300 leading-relaxed text-sm md:text-base whitespace-pre-line">
+        - Fast road camshaft profile
+        - Ashley competition exhaust system
+        - Bilstein adjustable dampers
+        - Reinforced suspension turrets
+      </p>
+    </section>
+
+  </main>
+
+  <!-- QR Code Modal -->
+  <div id="qrModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl relative">
+      <button onclick="closeQRModal()" class="absolute top-3 right-3 text-slate-400 hover:text-white p-2">
+        &#x2715;
+      </button>
+      <h3 class="text-lg font-bold text-white mb-1">Windscreen QR Code</h3>
+      <p class="text-xs text-slate-400 mb-4">Scan with a mobile camera to open this vehicle profile directly.</p>
+      
+      <div class="bg-white p-4 rounded-xl inline-block shadow-inner mb-4" id="qrcode"></div>
+      
+      <div class="text-xs text-slate-400 break-all bg-slate-900 p-2 rounded border border-slate-700/50 mb-4" id="qrUrlText"></div>
+
+      <button onclick="window.print()" class="w-full py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold text-sm rounded transition">
+        Print Display Plaque
+      </button>
+    </div>
+  </div>
+
+  <!-- JavaScript Logic -->
+  <script>
+    const STORAGE_KEY = 'classic_car_display_data';
+
+    // Default Profile Data
+    let carData = {
+      title: 'Ford Escort RS2000 Mk1',
+      year: '1973',
+      engine: '2.0L Pinto Inline-4',
+      colour: 'Diamond White',
+      trans: '4-Speed Manual',
+      tyres: '13" RS Alloys / Yokohama',
+      history: 'Fully restored Mk1 RS2000. Originally registered in the UK in late 1973. Features period-correct Weber 44 DCNF carburettors, Group 1 suspension setup, and original RS interior trim. Maintained for regional road runs and historic display events.',
+      mods: '- Fast road camshaft profile\n- Ashley competition exhaust system\n- Bilstein adjustable dampers\n- Reinforced suspension turrets'
+    };
+
+    // Initialize App
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSavedData();
+      renderProfile();
+      initQRCode();
+    });
+
+    function renderProfile() {
+      document.getElementById('displayTitle').innerText = carData.title;
+      document.getElementById('displayYear').innerText = carData.year;
+      document.getElementById('displayEngine').innerText = carData.engine;
+      document.getElementById('displayColour').innerText = carData.colour;
+      document.getElementById('displayTrans').innerText = carData.trans;
+      document.getElementById('displayTyres').innerText = carData.tyres;
+      document.getElementById('displayHistory').innerText = carData.history;
+      document.getElementById('displayMods').innerText = carData.mods;
+    }
+
+    function toggleEditMode() {
+      const panel = document.getElementById('editPanel');
+      const isHidden = panel.classList.contains('hidden');
+      
+      if (isHidden) {
+        document.getElementById('inputTitle').value = carData.title;
+        document.getElementById('inputYear').value = carData.year;
+        document.getElementById('inputEngine').value = carData.engine;
+        document.getElementById('inputColour').value = carData.colour;
+        document.getElementById('inputTrans').value = carData.trans;
+        document.getElementById('inputTyres').value = carData.tyres;
+        document.getElementById('inputHistory').value = carData.history;
+        document.getElementById('inputMods').value = carData.mods;
+        panel.classList.remove('hidden');
+      } else {
+        panel.classList.add('hidden');
+      }
+    }
+
+    function saveData(e) {
+      e.preventDefault();
+      carData = {
+        title: document.getElementById('inputTitle').value,
+        year: document.getElementById('inputYear').value,
+        engine: document.getElementById('inputEngine').value,
+        colour: document.getElementById('inputColour').value,
+        trans: document.getElementById('inputTrans').value,
+        tyres: document.getElementById('inputTyres').value,
+        history: document.getElementById('inputHistory').value,
+        mods: document.getElementById('inputMods').value
+      };
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(carData));
+      renderProfile();
+      toggleEditMode();
+    }
+
+    function loadSavedData() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          carData = JSON.parse(saved);
+        } catch(err) {
+          console.error("Error reading saved data", err);
+        }
+      }
+    }
+
+    // QR Code Generation
+    let qrGenerated = false;
+    function initQRCode() {
+      const currentUrl = window.location.href;
+      document.getElementById('qrUrlText').innerText = currentUrl;
+      
+      const qrContainer = document.getElementById('qrcode');
+      qrContainer.innerHTML = ""; 
+      
+      new QRCode(qrContainer, {
+        text: currentUrl,
+        width: 180,
+        height: 180,
+        colorDark: "#0f172a",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H
+      });
+    }
+
+    function openQRModal() {
+      document.getElementById('qrModal').classList.remove('hidden');
+    }
+
+    function closeQRModal() {
+      document.getElementById('qrModal').classList.add('hidden');
+    }
+  </script>
+</body>
+</html>
