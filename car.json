@@ -1,0 +1,33 @@
+{
+  "id": "entry-142",
+  "title": "Ford Escort RS2000 Mk1",
+  "year": "1973",
+  "entryNumber": "142",
+  "specs": {
+    "engine": "2.0L Pinto Inline-4",
+    "colour": "Diamond White",
+    "transmission": "4-Speed Manual",
+    "tyres": "13\" RS Alloys / Yokohama"
+  },
+  "overview": "Fully restored Mk1 RS2000. Originally registered in the UK in late 1973. Features period-correct Weber 44 DCNF carburettors, Group 1 suspension setup, and original RS interior trim. Maintained for regional road runs and historic display events.",
+  "modifications": [
+    "Fast road camshaft profile",
+    "Ashley competition exhaust system",
+    "Bilstein adjustable dampers",
+    "Reinforced suspension turrets"
+  ],
+  "gallery": [
+    {
+      "url": "https://images.unsplash.com/photo-1583121274602-3e2820c69888?auto=format&fit=crop&w=800&q=80",
+      "caption": "Front 3/4 profile display view"
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=800&q=80",
+      "caption": "Engine bay detail - Twin Webers"
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=80",
+      "caption": "Restoration stage - Body preparation"
+    }
+  ]
+}
