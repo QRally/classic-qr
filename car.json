@@ -18,6 +18,10 @@
   ],
     "gallery": [
     {
+      "url": "barn.jpg",
+      "caption": "Barn find"
+    },
+    {
       "url": "front.jpg",
       "caption": "Front 3/4 display profile"
     },
